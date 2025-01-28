@@ -1,4 +1,4 @@
-# Minimal AO
+# Minimal Permaweb
 
 A lightweight decentralized application demonstrating communication between a web frontend and AO processes on the Arweave blockchain.
 
