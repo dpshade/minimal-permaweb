@@ -1,0 +1,27 @@
+{
+  "name": "minimal-ao",
+  "module": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "bun build.js",
+    "dev": "bun run build && bun run serve",
+    "serve": "bun dev.js"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "events": "^3.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "readable-stream": "^3.6.2",
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "esbuild": "^0.24.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
