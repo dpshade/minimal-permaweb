@@ -1,5 +1,3 @@
-// hexocet.js
-
 export class HexocetAnimation {
     constructor(canvas) {
         this.canvas = canvas;
@@ -10,15 +8,27 @@ export class HexocetAnimation {
     }
 
     init() {
-        // Initialize particles
+        // Initialize particles towards the center
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const spreadFactor = 0.3; // Controls how spread out the particles are from center
+
         for (let i = 0; i < this.maxParticles; i++) {
             this.particles.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
+                x: centerX + (Math.random() - 0.5) * this.canvas.width * spreadFactor,
+                y: centerY + (Math.random() - 0.5) * this.canvas.height * spreadFactor,
                 size: Math.random() * 3 + 1,
                 speedX: (Math.random() - 0.5) * 2,
                 speedY: (Math.random() - 0.5) * 2,
                 opacity: Math.random() * 0.5 + 0.3
+            });
+        }
+
+        // Give some initial movement
+        for (let i = 0; i < 30; i++) {
+            this.particles.forEach(particle => {
+                particle.x += particle.speedX;
+                particle.y += particle.speedY;
             });
         }
 
@@ -44,7 +54,7 @@ export class HexocetAnimation {
     drawParticle(particle) {
         this.ctx.save();
         this.ctx.globalAlpha = particle.opacity;
-        this.ctx.strokeStyle = '#4444ff';
+        this.ctx.strokeStyle = '#652494';
         this.ctx.lineWidth = 1;
         this.drawHexagon(particle.x, particle.y, particle.size);
         this.ctx.stroke();
@@ -55,11 +65,23 @@ export class HexocetAnimation {
         particle.x += particle.speedX;
         particle.y += particle.speedY;
 
-        // Wrap around screen
-        if (particle.x < 0) particle.x = this.canvas.width;
-        if (particle.x > this.canvas.width) particle.x = 0;
-        if (particle.y < 0) particle.y = this.canvas.height;
-        if (particle.y > this.canvas.height) particle.y = 0;
+        // Bounce off edges
+        if (particle.x < 0) {
+            particle.x = 0;
+            particle.speedX = -particle.speedX;
+        }
+        if (particle.x > this.canvas.width) {
+            particle.x = this.canvas.width;
+            particle.speedX = -particle.speedX;
+        }
+        if (particle.y < 0) {
+            particle.y = 0;
+            particle.speedY = -particle.speedY;
+        }
+        if (particle.y > this.canvas.height) {
+            particle.y = this.canvas.height;
+            particle.speedY = -particle.speedY;
+        }
     }
 
     drawConnections() {
@@ -101,7 +123,6 @@ export class HexocetAnimation {
         requestAnimationFrame(this.animate);
     }
 
-    // Handle resize
     resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
@@ -110,14 +131,12 @@ export class HexocetAnimation {
 
 export function initHexocet(canvas) {
     const animation = new HexocetAnimation(canvas);
-    
-    // Handle window resize
+
     window.addEventListener('resize', () => {
         animation.resize();
     });
-    
-    // Initial resize
+
     animation.resize();
-    
+
     return animation;
 }

@@ -1,5 +1,5 @@
 // WalletManager.js
-import { createDataItemSigner } from '@permaweb/aoconnect';
+import { message, dryrun, result, createDataItemSigner } from '@permaweb/aoconnect';
 
 export class WalletManager {
   constructor() {
@@ -169,24 +169,23 @@ export class WalletManager {
         font-family: 'MatrixFont', monospace;
         cursor: pointer;
         transition: all 0.2s ease;
-        background: #4444ff;
+        background: #652494;
         color: white;
-        box-shadow: 0 2px 5px rgba(68, 68, 255, 0.2);
+        box-shadow: 0 2px 5px rgba(74, 26, 109, 0.2);
         z-index: 100;
       }
 
       #wallet-button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(68, 68, 255, 0.3);
       }
 
       #wallet-button.connected {
-        background: #ff4444;
-        box-shadow: 0 2px 5px rgba(255, 68, 68, 0.2);
+        background: #6d1a4a;
+        box-shadow: 0 2px 5px rgba(109, 26, 74, 0.2);
       }
 
       #wallet-button.connected:hover {
-        box-shadow: 0 4px 8px rgba(255, 68, 68, 0.3);
+        box-shadow: 0 4px 8px rgba(109, 26, 74, 0.3);
       }
     `;
     document.head.appendChild(style);
@@ -207,6 +206,19 @@ export class WalletManager {
           </div>
         `,
         disabled: this.isMobile,
+      },
+      {
+        id: "arweaveAppOption",
+        html: `
+          <div id="arweaveAppOption" class="connect-option">
+            <div class="connect-option-icon" style="background-image: url('https://arweave.net/qVms-k8Ox-eKFJN5QFvrPQvT9ryqQXaFcYbr-fJbgLY'); background-color: black;"></div>
+            <div class="connect-option-detail">
+              <p class="connect-option-name">Arweave.app</p>
+              <p class="connect-option-desc">Web-based wallet with keyfile support</p>
+            </div>
+          </div>
+        `,
+        disabled: false,
       }
     ];
 
@@ -233,16 +245,17 @@ export class WalletManager {
       arconnectOption.onclick = () => this.connectWallet('ArConnect');
     }
 
+    const arweaveAppOption = document.getElementById('arweaveAppOption');
+    if (arweaveAppOption) {
+      arweaveAppOption.onclick = () => this.connectWallet('ArweaveApp');
+    }
+
     // Close modal when clicking outside
     this.modal.onclick = (e) => {
       if (e.target === this.modal) {
         this.hideModal();
       }
     };
-  }
-
-  hideModal() {
-    this.modal.style.display = 'none';
   }
 
   async tryArConnect() {
@@ -267,11 +280,28 @@ export class WalletManager {
     }
   }
 
+  async tryArweaveApp() {
+    try {
+      // Open Arweave.app in a new window for wallet access
+      window.open('https://arweave.app', '_blank');
+      
+      // Placeholder for future implementation
+      // This will require additional logic for keyfile upload or address input
+      throw new Error("Arweave.app integration requires additional implementation");
+    } catch (error) {
+      console.warn("Arweave.app connection failed:", error);
+      throw error;
+    }
+  }
+
   async connectWallet(method) {
     try {
       switch (method) {
         case "ArConnect":
           await this.tryArConnect();
+          break;
+        case "ArweaveApp":
+          await this.tryArweaveApp();
           break;
         default:
           throw new Error("Unsupported wallet method");
@@ -281,6 +311,10 @@ export class WalletManager {
       switch (this.authMethod) {
         case "ArConnect":
           this.signer = createDataItemSigner(window.arweaveWallet);
+          break;
+        case "ArweaveApp":
+          // Add ArweaveApp signer implementation here
+          // This is a placeholder for future implementation
           break;
         default:
           throw new Error("No signer available for this auth method");
@@ -333,15 +367,19 @@ export class WalletManager {
           throw new Error(Error);
         }
         
-        return { Messages, Error };
+        return { Messages, Error, messageId };
       }
 
       // For write operations, use result
-      const { Messages, Error } = await result({
+      const resultsOut = await result({
         process: processId,
         message: messageId,
         data: data,
       });
+      
+      console.log("Results:", resultsOut);
+
+      const { Messages, Error } = resultsOut;
 
       if (Error) {
         console.error("Error in AO response:", Error);
@@ -351,7 +389,7 @@ export class WalletManager {
       console.log("Messages:", Messages);
       console.log("AO action completed successfully");
 
-      return { Messages, Error };
+      return { Messages, Error, messageId };
     } catch (error) {
       console.error("Error sending message to AO:", error);
       throw error;
@@ -378,6 +416,7 @@ export class WalletManager {
       if (this.authMethod === 'ArConnect' && window.arweaveWallet) {
         await window.arweaveWallet.disconnect();
       }
+      // Add additional disconnect logic for ArweaveApp if needed
       this.walletAddress = null;
       this.authMethod = null;
       this.signer = null;
@@ -386,6 +425,10 @@ export class WalletManager {
       console.error("Error disconnecting wallet:", error);
       throw error;
     }
+  }
+
+  hideModal() {
+    this.modal.style.display = 'none';
   }
 }
 
