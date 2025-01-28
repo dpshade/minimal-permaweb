@@ -318,5 +318,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Resources
 
 - [AO Protocol Documentation](https://cookbook_ao.ar.io)
-- [Arweave Development](https://docs.arweave.org](https://cookbook.arweave.dev/)
+- [Arweave Development](https://cookbook.arweave.dev/)
 - [Permaweb Resources](https://arweavehub.com/discover)
