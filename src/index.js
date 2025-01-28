@@ -26,7 +26,9 @@ if (typeof window !== 'undefined') {
 }
 
 // Initialize app
+import { initApp } from './app.js';
+
 const app = document.getElementById('app');
 if (app) {
-    app.innerHTML = '<h1>Minimal AO Setup</h1>';
+    initApp();
 }
