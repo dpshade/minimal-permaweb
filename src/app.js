@@ -39,21 +39,21 @@ export function initApp() {
             // UI feedback
             rightMessage.innerHTML = '<div class="loading-dots">Connecting to AO<span>.</span><span>.</span><span>.</span></div>';
             leftButton.disabled = true;
-            
+
             const tags = [
                 { name: 'Action', value: 'Greeting' },
                 { name: 'App-Name', value: 'Permaweb-App' },
                 { name: 'App-Version', value: '0.1' },
                 { name: 'Message', value: 'Hello AO!' }
             ];
-            
+
             const processId = 'EY0SusejSTtv32VOCCxAfuuR83Jn8XoVRoU5uvJ6XAs';
             const { Messages, Error, messageId } = await walletManager.sendMessageToAO(tags, '', processId);
 
             if (Messages?.length) {
                 const message = JSON.parse(Messages[0].Data);
                 const timestamp = new Date(message.timestamp).toLocaleTimeString();
-                
+
                 rightMessage.innerHTML = `
                     <div class="message-container">
                         <div class="message-header">
@@ -63,7 +63,7 @@ export function initApp() {
                         <div class="message-body">
                             <div class="message-text">${message.greeting}</div>
                             <div class="message-meta" style="position: relative; z-index: 10;">
-                                <span class="message-from">From: ${message.from.slice(0, 6)}...${message.from.slice(-4)}</span>
+                                <span class="message-from">From: ${message.from.slice(0, 3)}...${message.from.slice(-4)}</span>
                                 ${messageId ? `
                                     <a href="https://ao.link/#/message/${messageId}" 
                                        class="message-link" 
@@ -106,7 +106,7 @@ export function initApp() {
     button.id = 'wallet-button';
     button.textContent = 'Connect Wallet';
     button.onclick = () => walletManager.showModal();
-    
+
     // Add styles
     const style = document.createElement('style');
     style.textContent = `
@@ -306,15 +306,19 @@ export function initApp() {
                 font-size: 2rem;
             }
         }
+
+        .heading-container .side-button:first-child {
+            margin-left: 4.5rem;
+        }
     `;
-    
+
     document.head.appendChild(style);
-    
+
     // Append elements in correct order
     headingContainer.appendChild(leftButton);
     headingContainer.appendChild(heading);
     headingContainer.appendChild(rightMessage);
-    
+
     app.appendChild(canvas);
     app.appendChild(headingContainer);
     app.appendChild(button);
