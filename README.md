@@ -16,39 +16,96 @@ A lightweight decentralized application demonstrating communication between a we
 
 ## Architecture Overview
 
-The application follows a decentralized architecture where the frontend communicates directly with AO processes on the Arweave blockchain:
+AO's architecture is presented in two perspectives: a minimal flow for basic understanding and an advanced flow showing the complete system architecture.
+
+### Minimal AO Architecture
 
 ```mermaid
 graph TD
-    A[Frontend App.js] -->|Messages| B[Wallet Manager]
-    B -->|Signed Messages| C[AO Process]
-    C -->|State Changes| D[Arweave Network]
-    E[ArConnect/Arweave.app] -->|Authentication| B
-    C -->|Responses| B
-    B -->|Updates| A
-    style A fill:#f9f,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style C fill:#bfb,stroke:#333
-    style D fill:#fbb,stroke:#333
-    style E fill:#ffb,stroke:#333
+    U[User] --> F[Frontend]
+    F --> W[Wallet Manager]
+    W -->|Signed Message| P[AO Process]
+    P -->|Store State| A[Arweave]
+    A -->|Permanent Record| P
+    P -->|Response| W
+    W -->|Update UI| F
+    F -->|Render| U
+    
+    style U fill:#ff9,stroke:#333
+    style F fill:#f9f,stroke:#333
+    style W fill:#bbf,stroke:#333
+    style P fill:#bfb,stroke:#333
+    style A fill:#fbb,stroke:#333
 ```
 
-### Key Components
+**Key Components:**
+1. **Frontend**: Handles user interactions and UI rendering
+2. **Wallet Manager**: Manages cryptographic signatures and message formatting
+3. **AO Process**: Lua VM executing contract logic (state transitions)
+4. **Arweave**: Permanent storage for process logs and messages
 
-1. **Frontend (app.js)**
-   - Handles UI rendering and user interactions
-   - Manages the Hexocet animation background
-   - Processes wallet connections and message display
+### Advanced AO Network Flow
 
-2. **Wallet Manager (WalletManager.js)**
-   - Manages wallet connections (ArConnect/Arweave.app)
-   - Handles message signing and AO communication
-   - Provides wallet state management
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant W as WalletManager
+    participant MU as Messenger Unit
+    participant SU as Scheduler Unit
+    participant CU as Compute Unit
+    participant A as Arweave
 
-3. **AO Process (ao/ao.lua)**
-   - Processes incoming messages
-   - Executes business logic
-   - Manages state on the Arweave blockchain
+    U->>F: Initiate Action
+    F->>W: Create Message
+    W->>MU: Send Signed Message
+    MU->>SU: Request Sequencing
+    SU->>A: Store Message (ANS-104)
+    SU-->>MU: Slot Assignment
+    MU->>CU: Process Request
+    CU->>CU: Execute λ(P_i, m_j)
+    CU->>A: Load Process State
+    A-->>CU: Return Log_i
+    CU->>MU: Attested Result
+    MU->>SU: Store Outbox Messages
+    SU->>A: Persist State Changes
+    MU-->>W: Return Response
+    W-->>F: Update Interface
+    F-->>U: Display Result
+
+    loop Outbox Handling
+        MU->>MU: Recursive Message Push
+        MU->>SU: New Messages
+        SU->>A: Store Child Transactions
+    end
+```
+
+**Component Roles:**
+
+| Unit | Responsibility | Key Reference |
+|------|----------------|---------------|
+| **MU** | Message routing & push mechanics | Message Units |
+| **SU** | Atomic slot assignment & persistence | Scheduler Units |
+| **CU** | State computation & attestation | Compute Units |
+| **Arweave** | Immutable log storage | Storage Layer |
+
+**Enhanced Flow Details:**
+1. **Message Sequencing**: SUs assign globally ordered slots using Merkle proofs
+2. **Holographic State**: CUs compute state from Arweave-stored logs using VM λ
+3. **Attestation Chains**: Signed results include CU stake commitments
+4. **Recursive Processing**: MU handles outbox messages as new transactions
+
+### Security Considerations
+- Economic security via stake slashing
+- Sybil resistance through consensus mechanisms
+- Holographic state verification
+- Cryptographic message signing
+
+### Key Innovations
+- Parallel process execution
+- Unbounded compute capabilities
+- Modular VM architecture
+- Web2-like development experience with Web3 security
 
 ## Communication Flow
 
@@ -87,17 +144,95 @@ const tags = [
     { name: 'App-Name', value: 'Permaweb-App' }
 ];
 const response = await walletManager.sendMessageToAO(tags, data, processId);
+
+async sendMessageToAO(tags, data = "", processId) {
+    if (!this.signer) {
+      throw new Error("Signer is not initialized. Please connect wallet first.");
+    }
+
+    try {
+      console.log("Message sent to AO:", {
+        ProcessId: processId,
+        Tags: tags,
+        Signer: this.signer
+      });
+
+      const messageId = await message({
+        process: processId,
+        tags,
+        signer: this.signer,
+        data: data,
+      });
+
+      console.log("Message ID:", messageId);
+      
+      // For read-only operations, use dryrun
+      if (tags.some(tag => tag.name === "Action" && tag.value === "Read")) {
+        const { Messages, Error } = await dryrun({
+          process: processId,
+          tags: tags,
+          data: data,
+          signer: this.signer,
+        });
+        
+        if (Error) {
+          console.error("Error in dry run:", Error);
+          throw new Error(Error);
+        }
+        
+        return { Messages, Error, messageId };
+      }
+
+      // For write operations, use result
+      const resultsOut = await result({
+        process: processId,
+        message: messageId,
+        data: data,
+      });
+      
+      console.log("Results:", resultsOut);
+
+      const { Messages, Error } = resultsOut;
+
+      if (Error) {
+        console.error("Error in AO response:", Error);
+        throw new Error(Error);
+      }
+
+      console.log("Messages:", Messages);
+      console.log("AO action completed successfully");
+
+      return { Messages, Error, messageId };
+    } catch (error) {
+      console.error("Error sending message to AO:", error);
+      throw error;
+    }
+  }
 ```
 
 2. **Process Handling**
 ```lua
 -- AO Process receives and processes message
-Handlers.add('Greeting',
-  Handlers.utils.hasMatchingTag('Action', 'Greeting'),
-  function(msg)
-    -- Process message and send response
+local json = require("json")
+
+Handlers.add(
+  "Greeting",
+  Handlers.utils.hasMatchingTag("Action", "Greeting"),
+  function (msg)
+    local sender = msg.From
+    local timestamp = os.time()
+    local greeting = "Hello from AO!"
+    
+    local response = {
+      from = sender,
+      timestamp = timestamp,
+      greeting = greeting
+    }
+    
+    Handlers.utils.reply(msg, json.encode(response))
   end
 )
+
 ```
 
 ## Setup and Installation
