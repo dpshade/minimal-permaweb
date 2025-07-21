@@ -353,21 +353,46 @@ export class WalletManager {
 
       console.log("Message ID:", messageId);
       
-      // For read-only operations, use dryrun
+      // For read-only operations, use HyperBEAM instead of dryrun
       if (tags.some(tag => tag.name === "Action" && tag.value === "Read")) {
-        const { Messages, Error } = await dryrun({
-          process: processId,
-          tags: tags,
-          data: data,
-          signer: this.signer,
-        });
-        
-        if (Error) {
-          console.error("Error in dry run:", Error);
-          throw new Error(Error);
+        try {
+          // Use HyperBEAM endpoint for reading process state
+          const hyperbeamUrl = `https://forward.computer/${processId}~process@1.0/now/cache/lastgreeting`;
+          const response = await fetch(hyperbeamUrl);
+          
+          if (!response.ok) {
+            throw new Error(`HyperBEAM request failed: ${response.status}`);
+          }
+          
+          const cacheData = await response.text();
+          
+          // Create a message-like response format for compatibility
+          const Messages = [{
+            Data: cacheData || "No data available",
+            From: processId,
+            Tags: [{ name: "Action", value: "Read-Response" }],
+            HyperBEAMUrl: hyperbeamUrl // Include the HyperBEAM URL for UI display
+          }];
+          
+          return { Messages, Error: null, messageId, hyperbeamUrl };
+        } catch (hyperbeamError) {
+          console.warn("HyperBEAM read failed, falling back to dryrun:", hyperbeamError);
+          
+          // Fallback to dryrun if HyperBEAM fails
+          const { Messages, Error } = await dryrun({
+            process: processId,
+            tags: tags,
+            data: data,
+            signer: this.signer,
+          });
+          
+          if (Error) {
+            console.error("Error in dry run:", Error);
+            throw new Error(Error);
+          }
+          
+          return { Messages, Error, messageId };
         }
-        
-        return { Messages, Error, messageId };
       }
 
       // For write operations, use result

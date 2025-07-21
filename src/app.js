@@ -27,6 +27,67 @@ export function initApp() {
     const leftButton = document.createElement('button');
     leftButton.className = 'side-button left-button';
     leftButton.textContent = 'Say Hi to AO';
+    
+    // Create HyperBEAM read button
+    const hyperbeamButton = document.createElement('button');
+    hyperbeamButton.className = 'side-button hyperbeam-button';
+    hyperbeamButton.textContent = 'Read via HyperBEAM';
+    // Add click handler for HyperBEAM button
+    hyperbeamButton.onclick = async () => {
+        try {
+            if (!walletManager.signer) {
+                rightMessage.textContent = 'AO says: Connect wallet first!';
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                walletManager.showModal();
+                return;
+            }
+
+            // UI feedback
+            rightMessage.innerHTML = '<div class="loading-dots">Reading from HyperBEAM<span>.</span><span>.</span><span>.</span></div>';
+            hyperbeamButton.disabled = true;
+
+            const tags = [
+                { name: 'Action', value: 'Read' },
+                { name: 'App-Name', value: 'Permaweb-App' },
+                { name: 'App-Version', value: '0.1' }
+            ];
+
+            const processId = 'EY0SusejSTtv32VOCCxAfuuR83Jn8XoVRoU5uvJ6XAs';
+            const { Messages, Error, messageId, hyperbeamUrl } = await walletManager.sendMessageToAO(tags, '', processId);
+
+            if (Messages?.length && hyperbeamUrl) {
+                const data = Messages[0].Data;
+                const timestamp = new Date().toLocaleTimeString();
+
+                rightMessage.innerHTML = `
+                    <div class="message-container">
+                        <div class="message-header">
+                            <span class="message-time">${timestamp}</span>
+                            <span class="message-status">⚡</span>
+                        </div>
+                        <div class="message-body">
+                            <div class="message-text">Latest Greeting: "${data}"</div>
+                            <div class="hyperbeam-info">
+                                <div class="hyperbeam-label">⚡ Fetched via HyperBEAM</div>
+                                <a href="${hyperbeamUrl}" target="_blank" class="hyperbeam-url">${hyperbeamUrl}</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('HyperBEAM Read Error:', error);
+            rightMessage.innerHTML = `
+                <div class="message-error">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-text">HyperBEAM read failed</span>
+                </div>
+            `;
+        } finally {
+            hyperbeamButton.disabled = false;
+        }
+    };
+
     leftButton.onclick = async () => {
         try {
             if (!walletManager.signer) {
@@ -48,7 +109,7 @@ export function initApp() {
             ];
 
             const processId = 'EY0SusejSTtv32VOCCxAfuuR83Jn8XoVRoU5uvJ6XAs';
-            const { Messages, Error, messageId } = await walletManager.sendMessageToAO(tags, '', processId);
+            const { Messages, Error, messageId, hyperbeamUrl } = await walletManager.sendMessageToAO(tags, '', processId);
 
             if (Messages?.length) {
                 const message = JSON.parse(Messages[0].Data);
@@ -74,6 +135,12 @@ export function initApp() {
                                     </a>
                                 ` : ''}
                             </div>
+                            ${hyperbeamUrl ? `
+                                <div class="hyperbeam-info">
+                                    <div class="hyperbeam-label">⚡ Powered by HyperBEAM</div>
+                                    <div class="hyperbeam-url">${hyperbeamUrl}</div>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -307,15 +374,62 @@ export function initApp() {
             }
         }
 
-        .heading-container .side-button:first-child {
-            margin-left: 4.5rem;
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .hyperbeam-button {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #1a1a1a;
+            font-weight: bold;
+        }
+
+        .hyperbeam-button:hover {
+            background: linear-gradient(135deg, #FFA500, #FF8C00);
+        }
+
+        .hyperbeam-info {
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .hyperbeam-label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #FFB000;
+            margin-bottom: 0.25rem;
+        }
+
+        .hyperbeam-url {
+            font-size: 0.75rem;
+            font-family: monospace;
+            color: #FF8C00;
+            text-decoration: none;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+
+        .hyperbeam-url:hover {
+            text-decoration: underline;
         }
     `;
 
     document.head.appendChild(style);
 
+    // Create button container for left side
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'button-container';
+    buttonContainer.appendChild(leftButton);
+    buttonContainer.appendChild(hyperbeamButton);
+
     // Append elements in correct order
-    headingContainer.appendChild(leftButton);
+    headingContainer.appendChild(buttonContainer);
     headingContainer.appendChild(heading);
     headingContainer.appendChild(rightMessage);
 
